@@ -1,4 +1,4 @@
-const delay = require('delay')
+const delay = require('delay').default || require('delay')
 const ClientMock = require('../lib/client-mock')
 const Relay = require('../../lib/relay')
 

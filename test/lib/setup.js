@@ -4,7 +4,7 @@ const sinonChai = require('sinon-chai')
 const sinon = require('sinon')
 
 chai.use(chaiAsPromised)
-chai.use(sinonChai)
+chai.use(sinonChai.default || sinonChai)
 
 global.expect = chai.expect
 global.sinon = sinon
