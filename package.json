@@ -22,27 +22,28 @@
     "winston": "^3.0.0"
   },
   "dependencies": {
-    "aws-sdk": "^2.293.0",
-    "bottleneck": "^1.16.0",
-    "debug": "^3.1.0",
-    "lodash.isempty": "^4.2.1",
-    "winston-transport": "^4.2.0"
+    "@aws-sdk/client-cloudwatch-logs": "^3.879.0",
+    "bottleneck": "^2.19.5",
+    "debug": "^4.4.1",
+    "lodash.isempty": "^4.4.0",
+    "winston-transport": "^4.9.0",
+    "yarn": "^1.22.22"
   },
   "devDependencies": {
-    "chai": "^4.0.2",
-    "chai-as-promised": "^7.0.0",
-    "coveralls": "^3.0.2",
-    "delay": "^3.0.0",
-    "husky": "^0.14.3",
-    "lint-staged": "^7.2.2",
-    "mocha": "^5.2.0",
-    "mocha-junit-reporter": "^1.18.0",
-    "nyc": "^12.0.2",
-    "prettier-standard": "^8.0.1",
-    "rimraf": "^2.6.1",
-    "sinon": "^6.1.5",
-    "sinon-chai": "^3.2.0",
-    "standard": "^10.0.0"
+    "chai": "^6.0.1",
+    "chai-as-promised": "^7.1.1",
+    "coveralls": "^3.1.1",
+    "delay": "^6.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
+    "mocha": "^11.7.2",
+    "mocha-junit-reporter": "^2.2.1",
+    "nyc": "^17.1.0",
+    "prettier-standard": "^16.4.1",
+    "rimraf": "^6.0.1",
+    "sinon": "^21.0.0",
+    "sinon-chai": "^4.0.1",
+    "standard": "^17.1.2"
   },
   "main": "lib/index.js",
   "files": [

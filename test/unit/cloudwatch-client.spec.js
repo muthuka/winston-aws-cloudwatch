@@ -7,8 +7,6 @@ const logStreamName = 'testStream'
 let tokens = 0
 let streams = 0
 
-const withPromise = res => ({ promise: () => res })
-
 const mapRequest = (stub, includeExpected, token, nextToken) => {
   const suffixes = [++streams, ++streams, includeExpected ? '' : ++streams]
   const res = Promise.resolve({
@@ -16,16 +14,18 @@ const mapRequest = (stub, includeExpected, token, nextToken) => {
     nextToken
   })
   if (token) {
-    stub.withArgs(sinon.match({ nextToken: token })).returns(withPromise(res))
+    stub
+      .withArgs(sinon.match.has('input', sinon.match.has('nextToken', token)))
+      .returns(res)
   } else {
-    stub.returns(withPromise(res))
+    stub.returns(res)
   }
 }
 
 const mapRequests = (stub, pages, includeExpected) => {
   let prevToken = null
   for (let i = 0; i < pages - 1; ++i) {
-    let token = 'token' + ++tokens
+    const token = 'token' + ++tokens
     mapRequest(stub, false, prevToken, token)
     prevToken = token
   }
@@ -69,27 +69,69 @@ const createClient = options => {
   } else {
     putPromise = Promise.resolve({ nextSequenceToken: 'token42' })
   }
-  sinon.stub(client._client, 'putLogEvents').returns(withPromise(putPromise))
-  sinon
-    .stub(client._client, 'createLogGroup')
-    .returns(
-      withPromise(
-        options.groupErrorCode
-          ? Promise.reject(createErrorWithCode(options.groupErrorCode))
-          : Promise.resolve()
-      )
-    )
-  sinon
-    .stub(client._client, 'createLogStream')
-    .returns(
-      withPromise(
-        options.streamErrorCode
-          ? Promise.reject(createErrorWithCode(options.streamErrorCode))
-          : Promise.resolve()
-      )
-    )
-  const stub = sinon.stub(client._client, 'describeLogStreams')
-  options.streamsStrategy(stub)
+
+  const sendStub = sinon.stub(client._client, 'send').callsFake(command => {
+    if (command.constructor.name === 'PutLogEventsCommand') {
+      return putPromise
+    } else if (command.constructor.name === 'CreateLogGroupCommand') {
+      return options.groupErrorCode
+        ? Promise.reject(createErrorWithCode(options.groupErrorCode))
+        : Promise.resolve()
+    } else if (command.constructor.name === 'CreateLogStreamCommand') {
+      return options.streamErrorCode
+        ? Promise.reject(createErrorWithCode(options.streamErrorCode))
+        : Promise.resolve()
+    } else if (command.constructor.name === 'DescribeLogStreamsCommand') {
+      // Handle the streams strategy
+      if (options.streamsStrategy === streamsStrategies.default) {
+        const suffixes = [++streams, ++streams, '']
+        return Promise.resolve({
+          logStreams: suffixes.map(suf => ({
+            logStreamName: logStreamName + suf
+          })),
+          nextToken: null
+        })
+      } else if (options.streamsStrategy === streamsStrategies.notFound) {
+        const suffixes = [++streams, ++streams, ++streams]
+        return Promise.resolve({
+          logStreams: suffixes.map(suf => ({
+            logStreamName: logStreamName + suf
+          })),
+          nextToken: null
+        })
+      } else if (options.streamsStrategy === streamsStrategies.paged) {
+        // For paged strategy, we need to handle multiple calls
+        const callCount = sendStub.callCount
+        if (callCount <= 2) {
+          const suffixes = [++streams, ++streams, ++streams]
+          return Promise.resolve({
+            logStreams: suffixes.map(suf => ({
+              logStreamName: logStreamName + suf
+            })),
+            nextToken: 'token' + callCount
+          })
+        } else {
+          const suffixes = [++streams, ++streams, '']
+          return Promise.resolve({
+            logStreams: suffixes.map(suf => ({
+              logStreamName: logStreamName + suf
+            })),
+            nextToken: null
+          })
+        }
+      } else if (options.streamsStrategy === streamsStrategies.pagedNotFound) {
+        const suffixes = [++streams, ++streams, ++streams]
+        return Promise.resolve({
+          logStreams: suffixes.map(suf => ({
+            logStreamName: logStreamName + suf
+          })),
+          nextToken: null
+        })
+      }
+    }
+    return Promise.resolve()
+  })
+
   return client
 }
 
@@ -109,7 +151,14 @@ describe('CloudWatchClient', () => {
       const client = createClient()
       const batch = createBatch(1)
       return expect(
-        client.submit(batch).then(() => client._client.putLogEvents.calledOnce)
+        client.submit(batch).then(() => {
+          const putLogEventsCalls = client._client.send
+            .getCalls()
+            .filter(
+              call => call.args[0].constructor.name === 'PutLogEventsCommand'
+            )
+          return putLogEventsCalls.length === 1
+        })
       ).to.eventually.equal(true)
     })
 
@@ -119,9 +168,15 @@ describe('CloudWatchClient', () => {
       })
       const batch = createBatch(1)
       return expect(
-        client
-          .submit(batch)
-          .then(() => client._client.describeLogStreams.callCount)
+        client.submit(batch).then(() => {
+          const describeLogStreamsCalls = client._client.send
+            .getCalls()
+            .filter(
+              call =>
+                call.args[0].constructor.name === 'DescribeLogStreamsCommand'
+            )
+          return describeLogStreamsCalls.length
+        })
       ).to.eventually.equal(3)
     })
 
@@ -211,9 +266,14 @@ describe('CloudWatchClient', () => {
       })
       const batch = createBatch(1)
       return expect(
-        client
-          .submit(batch)
-          .then(() => client._client.createLogGroup.calledOnce)
+        client.submit(batch).then(() => {
+          const createLogGroupCalls = client._client.send
+            .getCalls()
+            .filter(
+              call => call.args[0].constructor.name === 'CreateLogGroupCommand'
+            )
+          return createLogGroupCalls.length === 1
+        })
       ).to.eventually.equal(true)
     })
 
@@ -243,9 +303,14 @@ describe('CloudWatchClient', () => {
       })
       const batch = createBatch(1)
       return expect(
-        client
-          .submit(batch)
-          .then(() => client._client.createLogStream.calledOnce)
+        client.submit(batch).then(() => {
+          const createLogStreamCalls = client._client.send
+            .getCalls()
+            .filter(
+              call => call.args[0].constructor.name === 'CreateLogStreamCommand'
+            )
+          return createLogStreamCalls.length === 1
+        })
       ).to.eventually.equal(true)
     })
 
