@@ -9,7 +9,7 @@ A [Winston](https://www.npmjs.com/package/winston) transport for
 
 ```js
 const winston = require('winston')
-const CloudWatchTransport = require('@muthuka/winston-aws-cloudwatch')
+const CloudWatchTransport = require('@muthu16/winston-aws-cloudwatch')
 
 const logger = winston.createLogger({
   transports: [

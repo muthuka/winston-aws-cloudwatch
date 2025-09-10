@@ -1,5 +1,5 @@
 {
-  "name": "@muthuka/winston-aws-cloudwatch",
+  "name": "@muthu16/winston-aws-cloudwatch",
   "version": "3.1.2",
   "description": "A Winston transport for Amazon CloudWatch.",
   "keywords": [
