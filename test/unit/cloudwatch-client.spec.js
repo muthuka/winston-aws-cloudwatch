@@ -32,9 +32,9 @@ const mapRequests = (stub, pages, includeExpected) => {
   mapRequest(stub, includeExpected, prevToken)
 }
 
-const createErrorWithCode = code => {
+const createAwsError = name => {
   const error = new Error('Whoopsie daisies')
-  error.code = code
+  error.name = name
   return error
 }
 
@@ -64,7 +64,7 @@ const createClient = options => {
   let putPromise
   if (options.putRejectionCode != null) {
     const err = new Error()
-    err.code = options.putRejectionCode
+    err.name = options.putRejectionCode
     putPromise = Promise.reject(err)
   } else {
     putPromise = Promise.resolve({ nextSequenceToken: 'token42' })
@@ -75,11 +75,11 @@ const createClient = options => {
       return putPromise
     } else if (command.constructor.name === 'CreateLogGroupCommand') {
       return options.groupErrorCode
-        ? Promise.reject(createErrorWithCode(options.groupErrorCode))
+        ? Promise.reject(createAwsError(options.groupErrorCode))
         : Promise.resolve()
     } else if (command.constructor.name === 'CreateLogStreamCommand') {
       return options.streamErrorCode
-        ? Promise.reject(createErrorWithCode(options.streamErrorCode))
+        ? Promise.reject(createAwsError(options.streamErrorCode))
         : Promise.resolve()
     } else if (command.constructor.name === 'DescribeLogStreamsCommand') {
       // Handle the streams strategy
@@ -186,7 +186,7 @@ describe('CloudWatchClient', () => {
       })
       const batch = createBatch(1)
       return expect(client.submit(batch)).to.be.rejectedWith(
-        'Invalid sequence token, will retry'
+        'Invalid sequence token, retries exhausted'
       )
     })
 
@@ -204,6 +204,17 @@ describe('CloudWatchClient', () => {
       })
       const batch = createBatch(1)
       return expect(client.submit(batch)).to.be.rejected
+    })
+
+    it('retries initialization after a previous failure', () => {
+      const client = createClient({
+        clientOptions: { createLogGroup: true },
+        groupErrorCode: 'UnicornDoesNotExistException'
+      })
+      const batch = createBatch(1)
+      return expect(client.submit(batch)).to.be.rejected.then(() => {
+        expect(client._initializing).to.equal(null)
+      })
     })
   })
 

@@ -96,5 +96,20 @@ describe('Relay', () => {
       await delay(submissionInterval * failures.length * 1.1)
       expect(spy.callCount).to.equal(0)
     })
+
+    it('retries an InvalidSequenceTokenException without emitting', async () => {
+      const submissionInterval = 50
+      const failures = ['InvalidSequenceTokenException']
+      const spy = sinon.spy()
+      const client = new ClientMock(failures)
+      const relay = new Relay(client, { submissionInterval })
+      relay.on('error', spy)
+      relay.start()
+      const item = createItem()
+      relay.submit(item)
+      await delay(submissionInterval * 2.2)
+      expect(spy.callCount).to.equal(0)
+      expect(client.submitted).to.deep.equal([item])
+    })
   })
 })

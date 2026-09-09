@@ -9,9 +9,9 @@ class MockClient {
       this._submitted = this._submitted.concat(batch)
       return Promise.resolve()
     } else {
-      const code = this._failures.shift()
-      const error = new Error(code)
-      error.code = code
+      const name = this._failures.shift()
+      const error = new Error(name)
+      error.name = name
       return Promise.reject(error)
     }
   }

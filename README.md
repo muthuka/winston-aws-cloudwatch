@@ -1,9 +1,18 @@
 # winston-aws-cloudwatch
 
-[![npm](https://img.shields.io/npm/v/winston-aws-cloudwatch.svg)](https://www.npmjs.com/package/winston-aws-cloudwatch) [![Build Status](https://img.shields.io/circleci/project/github/timdp/winston-aws-cloudwatch/master.svg?label=build)](https://circleci.com/gh/timdp/winston-aws-cloudwatch) [![Coverage Status](https://img.shields.io/coveralls/timdp/winston-aws-cloudwatch/master.svg)](https://coveralls.io/r/timdp/winston-aws-cloudwatch) [![JavaScript Standard Style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](https://standardjs.com/)
+[![npm](https://img.shields.io/npm/v/@muthu16/winston-aws-cloudwatch.svg)](https://www.npmjs.com/package/@muthu16/winston-aws-cloudwatch) [![JavaScript Standard Style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg)](https://standardjs.com/)
 
-A [Winston](https://www.npmjs.com/package/winston) transport for
-[Amazon CloudWatch](https://aws.amazon.com/cloudwatch/).
+A [Winston](https://www.npmjs.com/package/winston) 3 transport for
+[Amazon CloudWatch Logs](https://aws.amazon.com/cloudwatch/).
+
+Requires **Node.js 20+**. Logging uses AWS SDK for JavaScript v3
+(`@aws-sdk/client-cloudwatch-logs`).
+
+## Install
+
+```sh
+npm install @muthu16/winston-aws-cloudwatch winston
+```
 
 ## Usage
 
@@ -22,9 +31,10 @@ const logger = winston.createLogger({
       submissionRetryCount: 1,
       batchSize: 20,
       awsConfig: {
-        accessKeyId: '...',
-        secretAccessKey: '...',
-        region: '...'
+        region: 'us-east-1'
+        // Optional: accessKeyId, secretAccessKey.
+        // Otherwise the default credential chain is used (env, shared
+        // config, IAM role, etc.).
       },
       formatLog: item =>
         `${item.level}: ${item.message} ${JSON.stringify(item.meta)}`
@@ -33,12 +43,34 @@ const logger = winston.createLogger({
 })
 ```
 
+If `createLogGroup` or `createLogStream` is enabled, an already-existing group
+or stream is treated as success.
+
+## Options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `logGroupName` | — | CloudWatch log group (required) |
+| `logStreamName` | — | CloudWatch log stream (required) |
+| `createLogGroup` | `false` | Create the log group if it does not exist |
+| `createLogStream` | `false` | Create the log stream if it does not exist |
+| `submissionInterval` | `2000` | Minimum ms between batch submissions |
+| `submissionRetryCount` | `1` | Extra attempts after `InvalidSequenceTokenException` |
+| `batchSize` | `20` | Max log events per `PutLogEvents` call |
+| `awsConfig` | `null` | Options passed to `CloudWatchLogsClient` |
+| `formatLog` | built-in | `(item) => string` used as the event message |
+| `formatLogItem` | built-in | `(item) => { message, timestamp }` (ignored if `formatLog` is set) |
+
 ## Error Handling
 
-If, for any reason, logging to CloudWatch should fail, then the transport will
-emit an `error` event. It is recommended that you
-[subscribe to this event](https://www.npmjs.com/package/winston#awaiting-logs-to-be-written-in-winston)
-to avoid crashes.
+If logging to CloudWatch fails, the transport emits an `error` event. Subscribe
+to it to [avoid crashes](https://github.com/winstonjs/winston#awaiting-logs-to-be-written-in-winston):
+
+```js
+logger.on('error', err => {
+  console.error('CloudWatch logging failed', err)
+})
+```
 
 ## But Why?
 
@@ -46,6 +78,10 @@ As you may have noticed, there is also
 [winston-cloudwatch](https://www.npmjs.com/package/winston-cloudwatch), which
 predates this module. After making some contributions to that one, I felt like
 writing my own version. Feel free to use whichever you like best.
+
+This package is a maintained fork of
+[timdp/winston-aws-cloudwatch](https://github.com/timdp/winston-aws-cloudwatch),
+published as [`@muthu16/winston-aws-cloudwatch`](https://www.npmjs.com/package/@muthu16/winston-aws-cloudwatch).
 
 ## Author
 
